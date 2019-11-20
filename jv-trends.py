@@ -5,78 +5,86 @@ import re
 from datetime import datetime
 import time
 
+STANDARD_DELAY = 10
+STANDARD_DELETATION = 3600
+
+
+def heure():
+	return datetime.now()
+
+def my_write(str):
+	f.write(str)
+	print(str)
 
 def display_sorted(interval, evolution_time):
 	if (evolution_time == {}):
 		return
-	print("----------------------")
-	print("Topic les plus actifs sur les " + interval + " dernières minutes:")
+	my_write("----------------------")
+	my_write(heure() + "Topic les plus actifs sur les " + interval + " dernières minutes:")
 	sorted_list = sorted(evolution_time.items(), key = lambda kv:(kv[1]))
-	sorted_list = sorted_list[:3] 
+	sorted_list = sorted_list[:5]
 	for i in sorted_list:
-		print(i)
+		my_write(i)
 
-def display_counter(compteur):
-	evolution_two_hours = {}
-	evolution_hours = {}
+def delete_topic(topic):
+	last = len(topic[1]) - 1
+	now = datetime.timestamp(datetime.now())
+	tile = topic[0]
+	if (now - topic[1][last][0] > STANDARD_DELETATION):
+		del topics[title]
+		print("Topic supprimé : " + title)
+
+def display_counter(topics):
 	evolution_thirty_minutes = {}
-	evolution_last = {}
 
-	for key in compteur:
-		size = len(compteur[key])
+	for topic in topics.items():
+		delete_topic(topic)
+		size = len(topic[1])
 		last = size - 1
 
-		new_count = compteur[key][last][1]
+		new_count = topic[1][last][1]
 
-		if (size > 24):
-			two_hour_count = new_count - compteur[key][last - (24)][1]
-			evolution_two_hours[key] = two_hour_count
-
-		if (size > 12):
-			hour_count = new_count - compteur[key][last - (12)][1]
-			evolution_hours[key] = hour_count
+		title = topic[0]
 
 		if (size > 6):
-			thirty_count = new_count - compteur[key][last - (6)][1]
-			evolution_thirty_minutes[key] = thirty_count	
+			thirty_count = new_count - topic[1][last - (6)][1]
+			evolution_thirty_minutes[title] = thirty_count	
 
-		if (size > 1):
-			last_count = new_count - compteur[key][last - 1][1]
-			evolution_last[key] = last_count
-
-	display_sorted("120", evolution_two_hours)
-	display_sorted("60", evolution_hours)
 	display_sorted("30", evolution_thirty_minutes)
-	display_sorted("5", evolution_last)
-		
-def my_counter(compteur):
+
+def my_counter(topics):
 	html = urlopen('http://www.jeuxvideo.com/forums/0-51-0-1-0-1-0-blabla-18-25-ans.htm').read()
 
 	soup = BeautifulSoup.BeautifulSoup(html, features="html.parser")
 
-	topics = soup.find_all('ul', class_='topic-list topic-list-admin')
+	page_topic_content = soup.find_all('ul', class_='topic-list topic-list-admin')
 
 	nowa = datetime.now()
 	now = datetime.timestamp(nowa)
 
 	for i in range(1,26):
-		raw_title = topics[0].find_all('span', class_="topic-subject")[i].text
-		raw_count = topics[0].find_all('span', class_="topic-count")[i].text
+		raw_title = page_topic_content[0].find_all('span', class_="topic-subject")[i].text
+		raw_count = page_topic_content[0].find_all('span', class_="topic-count")[i].text
 
 		title = re.sub(r"^\s+|\s+$", "", raw_title)
 		count = float(re.sub(r"^\s+|\s+$", "", raw_count)) + 1
 
-		if (title in compteur):
-			compteur[title].append((now,count))		
+		if (title in topics):
+			topics[title].append((now,count))		
 		else:
-			compteur[title] = [(now,count)]
+			topics[title] = [(now,count)]
+
+
+f = open("topic_file.txt", "a")
 
 def main():
-	compteur = {}
-
+	topics = {}
+	
 	while(1):
-		my_counter(compteur)
-		display_counter(compteur)
-		time.sleep(300)
+		my_counter(topics)
+		display_counter(topics)
+		time.sleep(STANDARD_DELAY)
 
 main()
+f.close()	
+
