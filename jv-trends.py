@@ -12,7 +12,7 @@ def display_sorted(interval, evolution_time):
 	print("----------------------")
 	print("Topic les plus actifs sur les " + interval + " dernières minutes:")
 	sorted_list = sorted(evolution_time.items(), key = lambda kv:(kv[1]))
-	sorted_list = sorted_list[:5] 
+	sorted_list = sorted_list[:3] 
 	for i in sorted_list:
 		print(i)
 
@@ -28,7 +28,7 @@ def display_counter(compteur):
 
 		new_count = compteur[key][last][1]
 
-		if (size >= 24):
+		if (size > 24):
 			two_hour_count = new_count - compteur[key][last - (24)][1]
 			evolution_two_hours[key] = two_hour_count
 
@@ -40,14 +40,14 @@ def display_counter(compteur):
 			thirty_count = new_count - compteur[key][last - (6)][1]
 			evolution_thirty_minutes[key] = thirty_count	
 
-		if (size > 3):
+		if (size > 1):
 			last_count = new_count - compteur[key][last - 1][1]
 			evolution_last[key] = last_count
 
-	display_sorted("1", evolution_last)
-	display_sorted("30", evolution_thirty_minutes)
-	display_sorted("60", evolution_hours)
 	display_sorted("120", evolution_two_hours)
+	display_sorted("60", evolution_hours)
+	display_sorted("30", evolution_thirty_minutes)
+	display_sorted("5", evolution_last)
 		
 def my_counter(compteur):
 	html = urlopen('http://www.jeuxvideo.com/forums/0-51-0-1-0-1-0-blabla-18-25-ans.htm').read()
@@ -67,8 +67,7 @@ def my_counter(compteur):
 		count = float(re.sub(r"^\s+|\s+$", "", raw_count)) + 1
 
 		if (title in compteur):
-			compteur[title].append((now,count))
-					
+			compteur[title].append((now,count))		
 		else:
 			compteur[title] = [(now,count)]
 
