@@ -6,6 +6,49 @@ from datetime import datetime
 import time
 
 
+def display_sorted(interval, evolution_time):
+	if (evolution_time == {}):
+		return
+	print("----------------------")
+	print("Topic les plus actifs sur les " + interval + " dernières minutes:")
+	sorted_list = sorted(evolution_time.items(), key = lambda kv:(kv[1]))
+	sorted_list = sorted_list[:5] 
+	for i in sorted_list:
+		print(i)
+
+def display_counter(compteur):
+	evolution_two_hours = {}
+	evolution_hours = {}
+	evolution_thirty_minutes = {}
+	evolution_last = {}
+
+	for key in compteur:
+		size = len(compteur[key])
+		last = size - 1
+
+		new_count = compteur[key][last][1]
+
+		if (size >= 24):
+			two_hour_count = new_count - compteur[key][last - (24)][1]
+			evolution_two_hours[key] = two_hour_count
+
+		if (size > 12):
+			hour_count = new_count - compteur[key][last - (12)][1]
+			evolution_hours[key] = hour_count
+
+		if (size > 6):
+			thirty_count = new_count - compteur[key][last - (6)][1]
+			evolution_thirty_minutes[key] = thirty_count	
+
+		if (size > 3):
+			last_count = new_count - compteur[key][last - 1][1]
+			evolution_last[key] = last_count
+
+	display_sorted("1", evolution_last)
+	display_sorted("30", evolution_thirty_minutes)
+	display_sorted("60", evolution_hours)
+	display_sorted("120", evolution_two_hours)
+		
 def my_counter(compteur):
 	html = urlopen('http://www.jeuxvideo.com/forums/0-51-0-1-0-1-0-blabla-18-25-ans.htm').read()
 
@@ -16,7 +59,6 @@ def my_counter(compteur):
 	nowa = datetime.now()
 	now = datetime.timestamp(nowa)
 
-	evolution = []
 	for i in range(1,26):
 		raw_title = topics[0].find_all('span', class_="topic-subject")[i].text
 		raw_count = topics[0].find_all('span', class_="topic-count")[i].text
@@ -26,23 +68,16 @@ def my_counter(compteur):
 
 		if (title in compteur):
 			compteur[title].append((now,count))
-			size = len(compteur[title])
-			old_count = compteur[title][size - 2][1]
-			new_count = count
-			# new_count = compteur[title][size][1]
-			evolution_value = (((new_count - old_count) / old_count) * 100)
-			print("%d -> %d (+%f)" % (old_count, new_count, evolution_value))
-			evolution.append((evolution_value, title))
+					
 		else:
 			compteur[title] = [(now,count)]
-			print(now)
 
-	evolution.sort()
-	print(evolution)
+def main():
+	compteur = {}
 
+	while(1):
+		my_counter(compteur)
+		display_counter(compteur)
+		time.sleep(300)
 
-compteur = {}
-# now = datetime.now().time()
-while(1):
-	my_counter(compteur)
-	time.sleep(60)
+main()
