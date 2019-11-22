@@ -5,26 +5,25 @@ import re
 from datetime import datetime
 import time
 
-STANDARD_DELAY = 10
+STANDARD_DELAY = 600
 STANDARD_DELETATION = 3600
 
-
 def heure():
-	return datetime.now()
+	return str(datetime.now())
 
-def my_write(str):
-	f.write(str)
-	print(str)
+def my_write(file, string):
+	file.write(string)
+	print(string)
 
-def display_sorted(interval, evolution_time):
+def display_sorted(file, interval, evolution_time):
 	if (evolution_time == {}):
 		return
-	my_write("----------------------")
-	my_write(heure() + "Topic les plus actifs sur les " + interval + " dernières minutes:")
+	my_write(file, "----------------------\n")
+	my_write(file, heure() + ". Topic les plus actifs sur les " + interval + " dernières minutes:\n")
 	sorted_list = sorted(evolution_time.items(), key = lambda kv:(kv[1]))
 	sorted_list = sorted_list[:5]
 	for i in sorted_list:
-		my_write(i)
+		my_write(file, i[0] + "\n")
 
 def delete_topic(topic):
 	last = len(topic[1]) - 1
@@ -35,7 +34,11 @@ def delete_topic(topic):
 		print("Topic supprimé : " + title)
 
 def display_counter(topics):
+	file = open("./topic_file.txt", "w")
+	evolution_two_hours = {}
+	evolution_hours = {}
 	evolution_thirty_minutes = {}
+	evolution_last = {}
 
 	for topic in topics.items():
 		delete_topic(topic)
@@ -46,11 +49,26 @@ def display_counter(topics):
 
 		title = topic[0]
 
+		if (size > 24):
+			two_hour_count = new_count - topic[1][last - (24)][1]
+			evolution_two_hours[title] = two_hour_count
+
+		if (size > 12):
+			hour_count = new_count - topic[1][last - (12)][1]
+			evolution_hours[title] = hour_count
+
 		if (size > 6):
 			thirty_count = new_count - topic[1][last - (6)][1]
 			evolution_thirty_minutes[title] = thirty_count	
 
-	display_sorted("30", evolution_thirty_minutes)
+		if (size > 1):
+			last_count = new_count - topic[1][last - 1][1]
+			evolution_last[title] = last_count
+
+	display_sorted(file, "240", evolution_two_hours)
+	display_sorted(file, "120", evolution_hours)
+	display_sorted(file, "60", evolution_thirty_minutes)
+	display_sorted(file, "10", evolution_last)
 
 def my_counter(topics):
 	html = urlopen('http://www.jeuxvideo.com/forums/0-51-0-1-0-1-0-blabla-18-25-ans.htm').read()
@@ -73,9 +91,6 @@ def my_counter(topics):
 			topics[title].append((now,count))		
 		else:
 			topics[title] = [(now,count)]
-
-
-f = open("topic_file.txt", "a")
 
 def main():
 	topics = {}
