@@ -6,7 +6,7 @@ from datetime import datetime
 import time
 
 STANDARD_DELAY = 600
-STANDARD_DELETATION = 3600
+STANDARD_DELETION = 3600
 
 def heure():
 	return str(datetime.now())
@@ -25,13 +25,13 @@ def display_sorted(file, interval, evolution_time):
 	for i in sorted_list:
 		my_write(file, i[0] + "\n")
 
-def delete_topic(topic):
-	last = len(topic[1]) - 1
+def delete_topics(topics):
 	now = datetime.timestamp(datetime.now())
-	tile = topic[0]
-	if (now - topic[1][last][0] > STANDARD_DELETATION):
-		del topics[title]
-		print("Topic supprimé : " + title)
+	remove = [topic for topic in topics.items() if now - topic[1][-1][0] > STANDARD_DELETION ]
+	
+	for to_remove in remove:
+		del topics[to_remove[0]]
+		print("Topic supprimé : " + to_remove[0])
 
 def display_counter(topics):
 	file = open("./topic_file.txt", "w")
@@ -41,7 +41,6 @@ def display_counter(topics):
 	evolution_last = {}
 
 	for topic in topics.items():
-		delete_topic(topic)
 		size = len(topic[1])
 		last = size - 1
 
@@ -98,6 +97,7 @@ def main():
 	while(1):
 		my_counter(topics)
 		display_counter(topics)
+		delete_topics(topics)
 		time.sleep(STANDARD_DELAY)
 
 main()

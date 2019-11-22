@@ -6,3 +6,5 @@ app = Flask(__name__)
 def trends():
 	f = open("topic_file.txt", "r")		
 	return f.read(), 200
+
+
