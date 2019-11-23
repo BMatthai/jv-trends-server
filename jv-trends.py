@@ -61,8 +61,8 @@ def display_counter(topics):
 			thirty_count = new_count - topic[1][last - (60)][1]
 			evolution_thirty_minutes[title] = thirty_count
 
-		if (size > 10):
-			last_count = new_count - topic[1][last - 10][1]
+		if (size > 1):
+			last_count = new_count - topic[1][last - 1][1]
 			evolution_last[title] = last_count
 
 	display_sorted(file, "240", evolution_two_hours)
