@@ -8,6 +8,8 @@ import time
 STANDARD_DELAY = 60
 STANDARD_DELETION = 1200
 
+JV_PAGE_SIZE = 26
+
 def heure():
 	return str(datetime.now())
 
@@ -16,7 +18,6 @@ def my_write(file, string):
 	print(string)
 
 def display_sorted(file, interval, evolution_time):
-	my_write(file, str(evolution_time))
 	if (evolution_time == {}):
 		return
 	my_write(file, "----------------------\n")
@@ -28,18 +29,20 @@ def display_sorted(file, interval, evolution_time):
 
 def delete_topics(topics):
 	now = datetime.timestamp(datetime.now())
-	remove = [topic for topic in topics.items() if now - topic[1][-1][0] > STANDARD_DELETION ]
+	remove = [topic for topic in topics.items() if (now - topic[1][-1][0]) > STANDARD_DELETION]
 
 	for to_remove in remove:
 		del topics[to_remove[0]]
 		print("Topic supprimé : " + to_remove[0])
 
+	print(str(len(topics)) + " topics trackés.")
+
 def display_counter(topics):
 	file = open("./topic_file.txt", "w")
-	evolution_two_hours = {}
-	evolution_hours = {}
-	evolution_thirty_minutes = {}
-	evolution_last = {}
+	
+	evolution = [{}, {}, {}, {}]
+
+	tab = [10, 60, 120, 240]
 
 	for topic in topics.items():
 		size = len(topic[1])
@@ -49,26 +52,13 @@ def display_counter(topics):
 
 		title = topic[0]
 
-		if (size > 240):
-			two_hour_count = new_count - topic[1][last - (240)][1]
-			evolution_two_hours[title] = two_hour_count
+		for index, value in enumerate(tab):
+			if (size > value):
+				time_counter = new_count - topic[1][last - value][1]
+				evolution[index][title] = time_counter
 
-		if (size > 120):
-			hour_count = new_count - topic[1][last - (120)][1]
-			evolution_hours[title] = hour_count
-
-		if (size > 60):
-			thirty_count = new_count - topic[1][last - (60)][1]
-			evolution_thirty_minutes[title] = thirty_count
-
-		if (size > 1):
-			last_count = new_count - topic[1][last - 1][1]
-			evolution_last[title] = last_count
-
-	display_sorted(file, "240", evolution_two_hours)
-	display_sorted(file, "120", evolution_hours)
-	display_sorted(file, "60", evolution_thirty_minutes)
-	display_sorted(file, "10", evolution_last)
+	for index, value in enumerate(tab):
+		display_sorted(file, str(tab[index]), evolution[index])
 
 def my_counter(topics):
 	html = urlopen('http://www.jeuxvideo.com/forums/0-51-0-1-0-1-0-blabla-18-25-ans.htm').read()
@@ -80,14 +70,14 @@ def my_counter(topics):
 	nowa = datetime.now()
 	now = datetime.timestamp(nowa)
 
-	for i in range(1,26):
+	for i in range(1, JV_PAGE_SIZE):
 		raw_title = page_topic_content[0].find_all('span', class_="topic-subject")[i].text
 		raw_count = page_topic_content[0].find_all('span', class_="topic-count")[i].text
 
 		title = re.sub(r"^\s+|\s+$", "", raw_title)
 		count = float(re.sub(r"^\s+|\s+$", "", raw_count)) + 1
 
-		if (title in topics):
+		if (title in topics.keys()):
 			topics[title].append((now,count))
 		else:
 			topics[title] = [(now,count)]
