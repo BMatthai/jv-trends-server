@@ -4,7 +4,7 @@ app = Flask(__name__)
 
 @app.route("/trends", methods = ['GET'])
 def trends():
-	f = open("topic_file.txt", "r")		
+	f = open("/home/pi/jv-trends/topic_file.txt", "r")		
 	return f.read(), 200
 
 

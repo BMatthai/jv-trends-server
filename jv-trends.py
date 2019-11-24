@@ -7,7 +7,6 @@ import time
 
 STANDARD_DELAY = 60
 STANDARD_DELETION = 1200
-
 JV_PAGE_SIZE = 26
 
 def heure():
@@ -53,9 +52,9 @@ def display_counter(topics):
 		title = topic[0]
 
 		for index, value in enumerate(tab):
-			if (size > value):
-				time_counter = new_count - topic[1][last - value][1]
-				evolution[index][title] = time_counter
+			limit = min(value, last)
+			time_counter = new_count - topic[1][last - limit][1]
+			evolution[index][title] = time_counter
 
 	for index, value in enumerate(tab):
 		display_sorted(file, str(tab[index]), evolution[index])
