@@ -60,7 +60,7 @@ def display_counter(topics):
 		display_sorted(file, str(tab[index]), evolution[index])
 
 def my_counter(topics):
-	html = urlopen('http://www.jeuxvideo.com/forums/0-51-0-1-0-1-0-blabla-18-25-ans.htm').read()
+	html = urlopen('http://www.jeuxvideo.com/forums/0-51-0-1-0-1-0-blabla-18-25-ans.htm', timeout = 120).read()
 
 	soup = BeautifulSoup.BeautifulSoup(html, features="html.parser")
 
