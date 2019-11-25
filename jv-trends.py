@@ -5,9 +5,15 @@ import re
 from datetime import datetime
 import time
 
+from flask import Flask, request
+
+import json
+
 STANDARD_DELAY = 60
 STANDARD_DELETION = 1200
 JV_PAGE_SIZE = 26
+
+topics = {}
 
 def heure():
 	return str(datetime.now())
@@ -36,28 +42,28 @@ def delete_topics(topics):
 
 	print(str(len(topics)) + " topics trackés.")
 
-def display_counter(topics):
-	file = open("./topic_file.txt", "w")
+# def display_counter(topics):
+# 	file = open("./topic_file.txt", "w")
 	
-	evolution = [{}, {}, {}, {}]
+# 	evolution = [{}, {}, {}, {}]
 
-	tab = [10, 60, 120, 240]
+# 	tab = [10, 60, 120, 240]
 
-	for topic in topics.items():
-		size = len(topic[1])
-		last = size - 1
+# 	for topic in topics.items():
+# 		size = len(topic[1])
+# 		last = size - 1
 
-		new_count = topic[1][last][1]
+# 		new_count = topic[1][last][1]
 
-		title = topic[0]
+# 		title = topic[0]
 
-		for index, value in enumerate(tab):
-			limit = min(value, last)
-			time_counter = new_count - topic[1][last - limit][1]
-			evolution[index][title] = time_counter
+# 		for index, value in enumerate(tab):
+# 			limit = min(value, last)
+# 			time_counter = new_count - topic[1][last - limit][1]
+# 			evolution[index][title] = time_counter
 
-	for index, value in enumerate(tab):
-		display_sorted(file, str(tab[index]), evolution[index])
+# 	for index, value in enumerate(tab):
+# 		display_sorted(file, str(tab[index]), evolution[index])
 
 def my_counter(topics):
 	html = urlopen('http://www.jeuxvideo.com/forums/0-51-0-1-0-1-0-blabla-18-25-ans.htm', timeout = 120).read()
@@ -82,13 +88,34 @@ def my_counter(topics):
 			topics[title] = [(now,count)]
 
 def main():
-	topics = {}
-
 	while(1):
 		my_counter(topics)
-		display_counter(topics)
+		#display_counter(topics)
 		delete_topics(topics)
 		time.sleep(STANDARD_DELAY)
+
+app = Flask(__name__)
+
+@app.route("/trends", methods = ['GET'])
+def trends():
+	top = request.args.get('top', default = 1, type = int)
+	interval = request.args.get('interval', default = 1, type = int)
+	
+	result = []
+	for topic in topics.items():
+		size = len(topic[1])
+		last = size - 1
+
+		limit = min(interval, last)
+		old_count = topic[1][last - limit][1]
+		new_count = topic[1][last][1]
+		delta = new_count - old_count
+		title = topic[0]
+
+		result.append((title, delta, old_count, new_count))
+
+	json.loads(result)
+	return result, 200
 
 main()
 f.close()
