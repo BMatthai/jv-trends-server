@@ -8,6 +8,8 @@ import time
 from flask import Flask, request
 
 import json
+from operator import itemgetter
+from apscheduler.scheduler import Scheduler
 
 STANDARD_DELAY = 60
 STANDARD_DELETION = 1200
@@ -18,20 +20,6 @@ topics = {}
 def heure():
 	return str(datetime.now())
 
-def my_write(file, string):
-	file.write(string)
-	print(string)
-
-def display_sorted(file, interval, evolution_time):
-	if (evolution_time == {}):
-		return
-	my_write(file, "----------------------\n")
-	my_write(file, heure() + ". Topic les plus actifs sur les " + interval + " dernières minutes:\n")
-	sorted_list = sorted(evolution_time.items(), key = lambda kv:(kv[1]))
-	sorted_list = sorted_list[-5:]
-	for i in sorted_list:
-		my_write(file, i[0] + "\n")
-
 def delete_topics(topics):
 	now = datetime.timestamp(datetime.now())
 	remove = [topic for topic in topics.items() if (now - topic[1][-1][0]) > STANDARD_DELETION]
@@ -41,29 +29,6 @@ def delete_topics(topics):
 		print("Topic supprimé : " + to_remove[0])
 
 	print(str(len(topics)) + " topics trackés.")
-
-# def display_counter(topics):
-# 	file = open("./topic_file.txt", "w")
-	
-# 	evolution = [{}, {}, {}, {}]
-
-# 	tab = [10, 60, 120, 240]
-
-# 	for topic in topics.items():
-# 		size = len(topic[1])
-# 		last = size - 1
-
-# 		new_count = topic[1][last][1]
-
-# 		title = topic[0]
-
-# 		for index, value in enumerate(tab):
-# 			limit = min(value, last)
-# 			time_counter = new_count - topic[1][last - limit][1]
-# 			evolution[index][title] = time_counter
-
-# 	for index, value in enumerate(tab):
-# 		display_sorted(file, str(tab[index]), evolution[index])
 
 def my_counter(topics):
 	html = urlopen('http://www.jeuxvideo.com/forums/0-51-0-1-0-1-0-blabla-18-25-ans.htm', timeout = 120).read()
@@ -90,7 +55,6 @@ def my_counter(topics):
 def main():
 	while(1):
 		my_counter(topics)
-		#display_counter(topics)
 		delete_topics(topics)
 		time.sleep(STANDARD_DELAY)
 
@@ -100,7 +64,7 @@ app = Flask(__name__)
 def trends():
 	top = request.args.get('top', default = 1, type = int)
 	interval = request.args.get('interval', default = 1, type = int)
-	
+
 	result = []
 	for topic in topics.items():
 		size = len(topic[1])
@@ -114,8 +78,14 @@ def trends():
 
 		result.append((title, delta, old_count, new_count))
 
-	json.loads(result)
-	return result, 200
+	result.sort(key=itemgetter(1))
+	result = result[-top:]
 
-main()
-f.close()
+	json_res = json.dumps(result)
+	return json_res, 200
+
+@app.before_first_request
+def before():
+	scheduler = Scheduler()
+	scheduler.start()
+	scheduler.add_interval_job(main, seconds=5)
