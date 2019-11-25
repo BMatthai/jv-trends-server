@@ -17,9 +17,11 @@ JV_PAGE_SIZE = 26
 
 topics = {}
 
+# Retourne la date + l'heure sous forme de string
 def heure():
 	return str(datetime.now())
 
+# Cette fonction supprime les topics plus vieux que STANDARD_DELETION secondes.
 def delete_topics(topics):
 	now = datetime.timestamp(datetime.now())
 	remove = [topic for topic in topics.items() if (now - topic[1][-1][0]) > STANDARD_DELETION]
@@ -30,6 +32,11 @@ def delete_topics(topics):
 
 	print(str(len(topics)) + " topics trackés.")
 
+# Récupère la liste des 25 topics en première page du forum 18-25 de JVC et les stocke dans le dictionnaire "topics" 
+# sous la forme suivante: 
+# {"nom_topic1":[(t, count_at_t), (t+1, count_at_t+1)],
+# "nom_topic2":[(t, count_at_t), (t+1, count_at_t+1)]
+# }
 def my_counter(topics):
 	html = urlopen('http://www.jeuxvideo.com/forums/0-51-0-1-0-1-0-blabla-18-25-ans.htm', timeout = 120).read()
 
@@ -52,6 +59,7 @@ def my_counter(topics):
 		else:
 			topics[title] = [(now,count)]
 
+# Boucle du programme executée sur un thread secondaire
 def main():
 	while(1):
 		my_counter(topics)
@@ -60,6 +68,8 @@ def main():
 
 app = Flask(__name__)
 
+# Route pour accéder aux résultats, deux paramêtres entiers:
+# La valeur de "top" sert à retourner les topics les plus chauds au cours de l'intervalle "interval" 
 @app.route("/trends", methods = ['GET'])
 def trends():
 	top = request.args.get('top', default = 1, type = int)
