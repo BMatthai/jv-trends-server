@@ -75,7 +75,13 @@ def trends():
 	top = request.args.get('top', default = 1, type = int)
 	interval = request.args.get('interval', default = 1, type = int)
 
-	result = []
+	result_json = {}
+
+	result_json["top"] = top
+	result_json["interval"] = interval
+
+	# Create topic array
+	topics_array = []
 	for topic in topics.items():
 		size = len(topic[1])
 		last = size - 1
@@ -86,12 +92,14 @@ def trends():
 		delta = new_count - old_count
 		title = topic[0]
 
-		result.append((title, delta, old_count, new_count))
+		topics_array.append({"title" : title, "delta" : delta, "old value" : old_count, "new value" : new_count})
 
-	result.sort(key=itemgetter(1))
-	result = result[-top:]
+	topics_array = sorted(topics_array, key = lambda i: (i['delta'])) 
+	topics_array = topics_array[-top:]
 
-	json_res = json.dumps(result)
+	result_json["topics"] = topics_array
+
+	json_res = json.dumps(result_json)
 	return json_res, 200
 
 @app.before_first_request
