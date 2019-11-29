@@ -94,8 +94,8 @@ def trends():
 
 		topics_array.append({"title" : title, "delta" : delta, "old value" : old_count, "new value" : new_count})
 
-	topics_array = sorted(topics_array, key = lambda i: (i['delta']), reverse = True) 
 	topics_array = topics_array[-top:]
+	topics_array = sorted(topics_array, key = lambda i: (i['delta']), reverse = True) 
 
 	result_json["topics"] = topics_array
 
