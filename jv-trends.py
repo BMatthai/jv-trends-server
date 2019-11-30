@@ -64,7 +64,7 @@ def my_counter(topics):
 def main():
 	while(1):
 		my_counter(topics)
-		delete_topics(topics)
+		# delete_topics(topics)
 		time.sleep(STANDARD_DELAY)
 
 app = Flask(__name__)
