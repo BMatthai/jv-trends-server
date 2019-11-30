@@ -11,8 +11,8 @@ import json
 from operator import itemgetter
 from apscheduler.scheduler import Scheduler
 
-STANDARD_DELAY = 60
-STANDARD_DELETION = 1200
+STANDARD_DELAY = 5
+STANDARD_DELETION = 14400
 JV_PAGE_SIZE = 26
 
 topics = {}
@@ -44,20 +44,21 @@ def my_counter(topics):
 
 	page_topic_content = soup.find_all('ul', class_='topic-list topic-list-admin')
 
-	nowa = datetime.now()
-	now = datetime.timestamp(nowa)
+	now = datetime.timestamp(datetime.now())
 
 	for i in range(1, JV_PAGE_SIZE):
 		raw_title = page_topic_content[0].find_all('span', class_="topic-subject")[i].text
 		raw_count = page_topic_content[0].find_all('span', class_="topic-count")[i].text
 
 		title = re.sub(r"^\s+|\s+$", "", raw_title)
-		count = float(re.sub(r"^\s+|\s+$", "", raw_count)) + 1
+		new_count = float(re.sub(r"^\s+|\s+$", "", raw_count)) + 1
 
 		if (title in topics.keys()):
-			topics[title].append((now,count))
+			last_count = topics[title][-1][1]
+			if (new_count > last_count):
+				topics[title].append((now, new_count))
 		else:
-			topics[title] = [(now,count)]
+			topics[title] = [(now, new_count)]
 
 # Boucle du programme executée sur un thread secondaire
 def main():
@@ -74,7 +75,7 @@ app = Flask(__name__)
 def trends():
 	top = request.args.get('top', default = 1, type = int)
 	interval = request.args.get('interval', default = 1, type = int)
-
+	interval_seconds = interval * 60
 	result_json = {}
 
 	result_json["top"] = top
@@ -87,12 +88,18 @@ def trends():
 		last = size - 1
 
 		limit = min(interval, last)
-		old_count = topic[1][last - limit][1]
+		
+		i = 0
+		# Voir si la condition est OK...
+		while (topic[1][last][1] - topic[1][i][1] > interval_seconds):
+			i = i + 1
+
+		old_count = topic[1][i][1]
 		new_count = topic[1][last][1]
 		delta = new_count - old_count
 		title = topic[0]
 
-		topics_array.append({"title" : title, "delta" : delta, "old value" : old_count, "new value" : new_count})
+		topics_array.append({"title" : title, "oldval" : old_count, "newval" : new_count, "delta" : delta})
 
 	topics_array = topics_array[-top:]
 	topics_array = sorted(topics_array, key = lambda i: (i['delta']), reverse = True) 
