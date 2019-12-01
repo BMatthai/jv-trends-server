@@ -21,6 +21,9 @@ topics = {}
 def heure():
 	return str(datetime.now())
 
+def timestamp_minutes():
+	return int(datetime.timestamp(datetime.now()) // 60)
+
 # Cette fonction supprime les topics plus vieux que STANDARD_DELETION secondes.
 def delete_topics(topics):
 	now = datetime.timestamp(datetime.now())
@@ -44,7 +47,7 @@ def my_counter(topics):
 
 	page_topic_content = soup.find_all('ul', class_='topic-list topic-list-admin')
 
-	now = datetime.timestamp(datetime.now())
+	now = timestamp_minutes()
 
 	for i in range(1, JV_PAGE_SIZE):
 		raw_title = page_topic_content[0].find_all('span', class_="topic-subject")[i].text
@@ -54,17 +57,15 @@ def my_counter(topics):
 		new_count = float(re.sub(r"^\s+|\s+$", "", raw_count)) + 1
 
 		if (title in topics.keys()):
-			last_count = topics[title][-1][1]
-			if (new_count > last_count):
-				topics[title].append((now, new_count))
+			topics[title][now] = new_count
 		else:
-			topics[title] = [(now, new_count)]
+			topics[title] = {now:new_count}
 
 # Boucle du programme executée sur un thread secondaire
 def main():
 	while(1):
 		my_counter(topics)
-		delete_topics(topics)
+		# delete_topics(topics)
 		time.sleep(STANDARD_DELAY)
 
 app = Flask(__name__)
@@ -83,6 +84,9 @@ def trends():
 
 	# Create topic array
 	topics_array = []
+	
+	now = timestamp_minutes()
+	
 	for topic in topics.items():
 		size = len(topic[1])
 		last = size - 1
@@ -90,12 +94,15 @@ def trends():
 		limit = min(interval, last)
 		
 		i = 0
-		# Voir si la condition est OK...
-		while (topic[1][last][1] - topic[1][i][1] > interval_seconds):
-			i = i + 1
+		while (now not in topic[1].keys()):
+			now = now - 1
 
-		old_count = topic[1][i][1]
-		new_count = topic[1][last][1]
+		old = now
+		while (old in topic[1].keys() and now - old < interval):
+			old = old - 1
+
+		old_count = topic[1][now][1]
+		new_count = topic[1][now][1]
 		delta = new_count - old_count
 		title = topic[0]
 
