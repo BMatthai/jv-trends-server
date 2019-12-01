@@ -46,19 +46,22 @@ def my_counter(topics):
 
 	now = datetime.timestamp(datetime.now())
 
-	for i in range(1, JV_PAGE_SIZE):
-		raw_title = page_topic_content[0].find_all('span', class_="topic-subject")[i].text
-		raw_count = page_topic_content[0].find_all('span', class_="topic-count")[i].text
+	topics = page_topic_content[0].find_all('li')
+	
+	for topic in topics:
+		raw_count = topic.find_all('span', class_="topic-count")[0].text
 
-		title = re.sub(r"^\s+|\s+$", "", raw_title)
+		link = topic.find_all('span', class_="topic-subject")[0].find_all('a', class_="lien-jv topic-title")[0]["href"]
+		title = topic.find_all('span', class_="topic-subject")[0].find_all('a', class_="lien-jv topic-title")[0]["title"]
 		new_count = float(re.sub(r"^\s+|\s+$", "", raw_count)) + 1
 
 		if (title in topics.keys()):
 			last_count = topics[title][-1][1]
 			if (new_count > last_count):
-				topics[title].append((now, new_count))
+				topics[title]["count"].append((now, new_count))
 		else:
-			topics[title] = [(now, new_count)]
+			topic[title]["link"] = link
+			topics[title]["count"] = [(now, new_count)]
 
 # Boucle du programme executée sur un thread secondaire
 def main():
@@ -94,12 +97,13 @@ def trends():
 		while (topic[1][last][1] - topic[1][i][1] > interval_seconds):
 			i = i + 1
 
-		old_count = topic[1][i][1]
-		new_count = topic[1][last][1]
+		link = topic[1]["link"]
+		old_count = topic[1]["count"][i][1]
+		new_count = topic[1]["count"][last][1]
 		delta = new_count - old_count
 		title = topic[0]
 
-		topics_array.append({"title" : title, "oldval" : old_count, "newval" : new_count, "delta" : delta})
+		topics_array.append({"title" : title, "link" : link, "oldval" : old_count, "newval" : new_count, "delta" : delta})
 
 	topics_array = sorted(topics_array, key = lambda i: (i['delta']), reverse = True) 
 	topics_array = topics_array[:top]
