@@ -42,32 +42,31 @@ def my_counter(topics):
 
 	soup = BeautifulSoup.BeautifulSoup(html, features="html.parser")
 
-	page_topic_content = soup.find_all('ul', class_='topic-list topic-list-admin')
+	page_topic_content = soup.find('ul', class_='topic-list topic-list-admin')
 
 	now = datetime.timestamp(datetime.now())
 
-	topics = page_topic_content[0].find_all('li')
+	topicsl = page_topic_content.find_all('li', class_='')
 	
-	for topic in topics:
-		raw_count = topic.find_all('span', class_="topic-count")[0].text
+	for topic in topicsl:
+		raw_count = topic.find('span', class_="topic-count").text
 
-		link = topic.find_all('span', class_="topic-subject")[0].find_all('a', class_="lien-jv topic-title")[0]["href"]
-		title = topic.find_all('span', class_="topic-subject")[0].find_all('a', class_="lien-jv topic-title")[0]["title"]
+		link = topic.find('a', class_="lien-jv topic-title")["href"]
+		title = topic.find('a', class_="lien-jv topic-title")["title"]
 		new_count = float(re.sub(r"^\s+|\s+$", "", raw_count)) + 1
 
 		if (title in topics.keys()):
-			last_count = topics[title][-1][1]
+			last_count = topics[title]["count"][-1][1]
 			if (new_count > last_count):
 				topics[title]["count"].append((now, new_count))
 		else:
-			topic[title]["link"] = link
-			topics[title]["count"] = [(now, new_count)]
+			topics[title] = {"link":link, "count":[(now, new_count)]}
 
 # Boucle du programme executée sur un thread secondaire
 def main():
 	while(1):
 		my_counter(topics)
-		delete_topics(topics)
+		# delete_topics(topics)
 		time.sleep(STANDARD_DELAY)
 
 app = Flask(__name__)
@@ -87,14 +86,14 @@ def trends():
 	# Create topic array
 	topics_array = []
 	for topic in topics.items():
-		size = len(topic[1])
+		size = len(topic[1]["count"])
 		last = size - 1
 
 		limit = min(interval, last)
 		
 		i = 0
 		# Voir si la condition est OK...
-		while (topic[1][last][1] - topic[1][i][1] > interval_seconds):
+		while (topic[1]["count"][last][1] - topic[1]["count"][i][1] > interval_seconds):
 			i = i + 1
 
 		link = topic[1]["link"]
