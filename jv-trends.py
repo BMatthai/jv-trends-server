@@ -24,7 +24,7 @@ def heure():
 # Cette fonction supprime les topics plus vieux que STANDARD_DELETION secondes.
 def delete_topics(topics):
 	now = datetime.timestamp(datetime.now())
-	remove = [topic for topic in topics.items() if (now - topic[1][-1][0]) > STANDARD_DELETION]
+	remove = [topic for topic in topics.items() if (now - topic[1]["count"][-1][0]) > STANDARD_DELETION]
 
 	for to_remove in remove:
 		del topics[to_remove[0]]
@@ -42,23 +42,25 @@ def my_counter(topics):
 
 	soup = BeautifulSoup.BeautifulSoup(html, features="html.parser")
 
-	page_topic_content = soup.find_all('ul', class_='topic-list topic-list-admin')
+	page_topic_content = soup.find('ul', class_='topic-list topic-list-admin')
 
 	now = datetime.timestamp(datetime.now())
 
-	for i in range(1, JV_PAGE_SIZE):
-		raw_title = page_topic_content[0].find_all('span', class_="topic-subject")[i].text
-		raw_count = page_topic_content[0].find_all('span', class_="topic-count")[i].text
+	topicsl = page_topic_content.find_all('li', class_='')
+	
+	for topic in topicsl:
+		raw_count = topic.find('span', class_="topic-count").text
 
-		title = re.sub(r"^\s+|\s+$", "", raw_title)
+		link = topic.find('a', class_="lien-jv topic-title")["href"]
+		title = topic.find('a', class_="lien-jv topic-title")["title"]
 		new_count = float(re.sub(r"^\s+|\s+$", "", raw_count)) + 1
 
 		if (title in topics.keys()):
-			last_count = topics[title][-1][1]
+			last_count = topics[title]["count"][-1][1]
 			if (new_count > last_count):
-				topics[title].append((now, new_count))
+				topics[title]["count"].append((now, new_count))
 		else:
-			topics[title] = [(now, new_count)]
+			topics[title] = {"link":link, "count":[(now, new_count)]}
 
 # Boucle du programme executée sur un thread secondaire
 def main():
@@ -84,22 +86,23 @@ def trends():
 	# Create topic array
 	topics_array = []
 	for topic in topics.items():
-		size = len(topic[1])
+		size = len(topic[1]["count"])
 		last = size - 1
 
 		limit = min(interval, last)
 		
 		i = 0
 		# Voir si la condition est OK...
-		while (topic[1][last][1] - topic[1][i][1] > interval_seconds):
+		while (topic[1]["count"][last][1] - topic[1]["count"][i][1] > interval_seconds):
 			i = i + 1
 
-		old_count = topic[1][i][1]
-		new_count = topic[1][last][1]
+		link = topic[1]["link"]
+		old_count = topic[1]["count"][i][1]
+		new_count = topic[1]["count"][last][1]
 		delta = new_count - old_count
 		title = topic[0]
 
-		topics_array.append({"title" : title, "oldval" : old_count, "newval" : new_count, "delta" : delta})
+		topics_array.append({"title" : title, "link" : link, "oldval" : old_count, "newval" : new_count, "delta" : delta})
 
 	topics_array = sorted(topics_array, key = lambda i: (i['delta']), reverse = True) 
 	topics_array = topics_array[:top]
