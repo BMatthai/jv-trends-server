@@ -24,7 +24,7 @@ def heure():
 # Cette fonction supprime les topics plus vieux que STANDARD_DELETION secondes.
 def delete_topics(topics):
 	now = datetime.timestamp(datetime.now())
-	remove = [topic for topic in topics.items() if (now - topic[1][-1][0]) > STANDARD_DELETION]
+	remove = [topic for topic in topics.items() if (now - topic[1]["count"][-1][0]) > STANDARD_DELETION]
 
 	for to_remove in remove:
 		del topics[to_remove[0]]
@@ -66,7 +66,7 @@ def my_counter(topics):
 def main():
 	while(1):
 		my_counter(topics)
-		# delete_topics(topics)
+		delete_topics(topics)
 		time.sleep(STANDARD_DELAY)
 
 app = Flask(__name__)
