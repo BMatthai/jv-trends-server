@@ -82,7 +82,7 @@ def get_data(topics):
 			last_element = topics[title]["count"][-1]
 			if (now == last_element[0]):
 				if (new_count > last_element[1]):
-					last_element = (now, new_count)
+					topics[title]["count"][-1] = (now, new_count)
 			else:
 				topics[title]["count"].append((now, new_count))
 		else:
