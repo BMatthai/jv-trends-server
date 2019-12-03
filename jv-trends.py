@@ -9,46 +9,69 @@ from flask import Flask, request
 
 import json
 from operator import itemgetter
-from apscheduler.scheduler import Scheduler
+
+import threading
 
 STANDARD_DELAY = 5
-STANDARD_DELETION = 14400
+STANDARD_DELETION = 120
 JV_PAGE_SIZE = 26
 
 topics = {}
 
+def log(string):
+	print(string)
+
+
 # Retourne la date + l'heure sous forme de string
-def heure():
-	return str(datetime.now())
+def timestamp_minute():
+	return int(datetime.timestamp(datetime.now()) // 60)
 
 # Cette fonction supprime les topics plus vieux que STANDARD_DELETION secondes.
 def delete_topics(topics):
-	now = datetime.timestamp(datetime.now())
+	now = timestamp_minute()
 	remove = [topic for topic in topics.items() if (now - topic[1]["count"][-1][0]) > STANDARD_DELETION]
 
 	for to_remove in remove:
 		del topics[to_remove[0]]
-		print("Topic supprimé : " + to_remove[0])
+		log("Topic supprimé : " + to_remove[0])
 
-	print(str(len(topics)) + " topics trackés.")
+	log(str(len(topics)) + " topics trackés.")
+
+def delta_from_topic(topic, begin, end = 0):
+	now = timestamp_minute()
+	counts = topic[1]["count"]
+
+	if (end > begin):
+		return 0
+
+	# Si begin fait référence à un moment avant le début du tracking, renvoyer début du tracking
+	if (counts[0][0] > now - begin):
+		log("Topic tracké depuis pas longtemps on renvoie le delta maximal")
+		return counts[-1][1] - counts[0][1]
+
+	for index, element in enumerate(counts): 
+		if (now - begin >= element[0]):
+			log("Différence compteur " + str(now - begin) + " à " + str(now) + " (" + str(counts[index][1]) + " -> " + str(counts[-1][1]) + ")")
+			return counts[-1][1] - counts[index][1]
+	return 0
 
 # Récupère la liste des 25 topics en première page du forum 18-25 de JVC et les stocke dans le dictionnaire "topics" 
 # sous la forme suivante: 
 # {"nom_topic1":[(t, count_at_t), (t+1, count_at_t+1)],
 # "nom_topic2":[(t, count_at_t), (t+1, count_at_t+1)]
 # }
-def my_counter(topics):
+def get_data(topics):
 	html = urlopen('http://www.jeuxvideo.com/forums/0-51-0-1-0-1-0-blabla-18-25-ans.htm', timeout = 120).read()
 
 	soup = BeautifulSoup.BeautifulSoup(html, features="html.parser")
 
 	page_topic_content = soup.find('ul', class_='topic-list topic-list-admin')
 
-	now = datetime.timestamp(datetime.now())
+	now = timestamp_minute()
 
-	topicsl = page_topic_content.find_all('li', class_='')
+	topic_list = page_topic_content.find_all('li', class_='')
 	
-	for topic in topicsl:
+	for topic in topic_list:
 		raw_count = topic.find('span', class_="topic-count").text
 
 		link = topic.find('a', class_="lien-jv topic-title")["href"]
@@ -56,18 +79,22 @@ def my_counter(topics):
 		new_count = float(re.sub(r"^\s+|\s+$", "", raw_count)) + 1
 
 		if (title in topics.keys()):
-			last_count = topics[title]["count"][-1][1]
-			if (new_count > last_count):
+			last_element = topics[title]["count"][-1]
+			if (now == last_element[0]):
+				if (new_count > last_element[1]):
+					last_element = (now, new_count)
+			else:
 				topics[title]["count"].append((now, new_count))
 		else:
-			topics[title] = {"link":link, "count":[(now, new_count)]}
+			topics[title] = {"link" : link, "count" : [(now, new_count)]}
 
 # Boucle du programme executée sur un thread secondaire
 def main():
 	while(1):
-		my_counter(topics)
+		get_data(topics)
 		delete_topics(topics)
 		time.sleep(STANDARD_DELAY)
+
 
 app = Flask(__name__)
 
@@ -85,7 +112,7 @@ def trends():
 
 	# Create topic array
 	topics_array = []
-	for topic in topics.items():
+	for topic in topics.copy().items():
 		size = len(topic[1]["count"])
 		last = size - 1
 
@@ -99,7 +126,9 @@ def trends():
 		link = topic[1]["link"]
 		old_count = topic[1]["count"][i][1]
 		new_count = topic[1]["count"][last][1]
-		delta = new_count - old_count
+		delta = delta_from_topic(topic, interval, 0)
+
+		# new_count - old_count
 		title = topic[0]
 
 		topics_array.append({"title" : title, "link" : link, "oldval" : old_count, "newval" : new_count, "delta" : delta})
@@ -114,6 +143,4 @@ def trends():
 
 @app.before_first_request
 def before():
-	scheduler = Scheduler()
-	scheduler.start()
-	scheduler.add_interval_job(main, seconds=5)
+	threading.Thread(target=main).start()
