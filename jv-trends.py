@@ -112,7 +112,7 @@ def trends():
 
 	# Create topic array
 	topics_array = []
-	for topic in topics.items():
+	for topic in topics.copy().items():
 		size = len(topic[1]["count"])
 		last = size - 1
 
