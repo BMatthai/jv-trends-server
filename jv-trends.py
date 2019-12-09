@@ -3,7 +3,8 @@ import bs4 as BeautifulSoup
 import re
 from datetime import datetime
 import time
-from flask import Flask, request
+from flask import Flask
+from flask import request
 import json
 from operator import itemgetter
 import threading
@@ -22,51 +23,33 @@ def timestamp_minute():
 	return int(datetime.timestamp(datetime.now()) // 60)
 
 # Cette fonction supprime les topics plus vieux que STANDARD_DELETION secondes.
-# def delete_topics(topics):
-# 	now = timestamp_minute()
-# 	remove = [topic for topic in topics.items() if (now - topic[1]["count"][-1][0]) > STANDARD_DELETION]
+def delete_topics(topics):
+	now = timestamp_minute()
+	remove = [topic for topic in topics.items() if (now - most_recent_before(topic, 0)) > STANDARD_DELETION]
 
-# 	for to_remove in remove:
-# 		del topics[to_remove[0]]
-# 		log("Topic supprimé : " + to_remove[0])
+	for to_remove in remove:
+		del topics[to_remove[0]]
+		log("Topic supprimé : " + to_remove[0])
 
-# 	log(str(len(topics)) + " topics trackés.")
+	log(str(len(topics)) + " topics trackés.")
 
-
-def count_before(topic, duration):
+# Returns the most recent count before a certain moment (duration)
+def most_recent_before(topic, duration):
 	now = timestamp_minute()
 	count = topic[1]["count"]
 	limit =  now - duration
-	max_val = max((i for i in count.keys() if i <= limit), default=0)
-    
-	return count[max_val]
+	most_recent = max((i for i in count.keys() if i <= limit), default=0)
+	
+	return most_recent
 
-
-def count_after(topic, duration):
+# Returns the oldest count after a certain moment (duration)
+def oldest_after(topic, duration):
 	now = timestamp_minute()
 	count = topic[1]["count"]
 	limit =  now - duration
-	min_val = min((i for i in count.keys() if i >= limit), default = 0)
-    
-	return count[min_val]
+	oldest = min((i for i in count.keys() if i >= limit), default = 0)
 
-def delta_from_topic(topic, begin, end = 0):
-	now = timestamp_minute()
-	counts = topic[1]["count"]
-
-	if (end > begin):
-		return 0
-
-	# Si begin fait référence à un moment avant le début du tracking, renvoyer début du tracking
-	if (counts[0][0] > now - begin):
-		log("Topic tracké depuis pas longtemps on renvoie le delta maximal")
-		return counts[-1][1] - counts[0][1]
-
-	for index, element in enumerate(counts):
-		if (now - begin >= element[0]):
-			log("Différence compteur " + str(now - begin) + " à " + str(now) + " (" + str(counts[index][1]) + " -> " + str(counts[-1][1]) + ")")
-			return counts[-1][1] - counts[index][1]
-	return 0
+	return oldest
 
 # Récupère la liste des 25 topics en première page du forum 18-25 de JVC et les stocke dans le dictionnaire "topics" 
 # sous la forme suivante: 
@@ -100,7 +83,7 @@ def get_data(topics):
 def main():
 	while(1):
 		get_data(topics)
-		# delete_topics(topics)
+		delete_topics(topics)
 		time.sleep(STANDARD_DELAY)
 
 
@@ -127,8 +110,8 @@ def trends():
 		limit = min(interval, last)
 		
 		link = topic[1]["link"]
-		old_count = count_after(topic, interval)
-		new_count = count_before(topic, 0)
+		old_count = topic[1]["count"][oldest_after(topic, interval)]
+		new_count = topic[1]["count"][most_recent_before(topic, 0)]
 		delta = new_count - old_count
 		title = topic[0]
 
