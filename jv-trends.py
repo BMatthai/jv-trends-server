@@ -37,21 +37,25 @@ def delete_topics(topics):
 
 	log(str(len(topics)) + " tracked topics")
 
-# Returns the most recent count before a certain moment (duration)
 def most_recent_before(topic, duration):
-	now = timestamp_minute()
+	"""
+	Returns the most recent count before a certain moment (duration)
+	"""
+	now = max(i for i in count.keys())
 	count = topic[1]["count"]
 	limit =  now - duration
-	most_recent = max((i for i in count.keys() if i <= limit), default = 0)
+	most_recent = max((i for i in count.keys() if i <= limit))
 	
 	return most_recent
 
-# Returns the oldest count after a certain moment (duration)
 def oldest_after(topic, duration):
-	now = timestamp_minute()
+	"""
+	Returns the oldest count after a certain moment (duration)
+	"""
+	now = max(i for i in count.keys())
 	count = topic[1]["count"]
 	limit =  now - duration
-	oldest = min((i for i in count.keys() if i >= limit), default = 0)
+	oldest = min((i for i in count.keys() if i >= limit))
 
 	return oldest
 
