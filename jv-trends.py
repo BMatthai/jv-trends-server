@@ -18,27 +18,31 @@ topics = {}
 def log(string):
 	print(string)
 
-# Retourne la date + l'heure sous forme de string
 def timestamp_minute():
+	"""
+	This method returns the cur timestamp as minute, in a entire value.
+	"""
 	return int(datetime.timestamp(datetime.now()) // 60)
 
-# Cette fonction supprime les topics plus vieux que STANDARD_DELETION secondes.
 def delete_topics(topics):
+	"""
+	This method creates a list of topics to delete and then delete each one of it.
+	"""
 	now = timestamp_minute()
 	remove = [topic for topic in topics.items() if (now - most_recent_before(topic, 0)) > STANDARD_DELETION]
 
 	for to_remove in remove:
 		del topics[to_remove[0]]
-		log("Topic supprimé : " + to_remove[0])
+		log("Deleted topic : " + to_remove[0])
 
-	log(str(len(topics)) + " topics trackés.")
+	log(str(len(topics)) + " tracked topics")
 
 # Returns the most recent count before a certain moment (duration)
 def most_recent_before(topic, duration):
 	now = timestamp_minute()
 	count = topic[1]["count"]
 	limit =  now - duration
-	most_recent = max((i for i in count.keys() if i <= limit), default=0)
+	most_recent = max((i for i in count.keys() if i <= limit), default = 0)
 	
 	return most_recent
 
@@ -51,12 +55,12 @@ def oldest_after(topic, duration):
 
 	return oldest
 
-# Récupère la liste des 25 topics en première page du forum 18-25 de JVC et les stocke dans le dictionnaire "topics" 
-# sous la forme suivante: 
-# {"nom_topic1":[(t, count_at_t), (t+1, count_at_t+1)],
-# "nom_topic2":[(t, count_at_t), (t+1, count_at_t+1)]
-# }
 def get_data(topics):
+	"""
+	Fetch forum main page and add it in dict "topics" in the following format:
+	{"topic_1_title": {"link" : topic_link, "count": {time_t: count_at_t, time_t1: count_at_t1}}
+	}
+	"""
 	html = urlopen('http://www.jeuxvideo.com/forums/0-51-0-1-0-1-0-blabla-18-25-ans.htm', timeout = 120).read()
 
 	soup = BeautifulSoup.BeautifulSoup(html, features="html.parser")
@@ -79,8 +83,11 @@ def get_data(topics):
 		else:
 			topics[title] = {"link" : link, "count" : {now: new_count}}
 
-# Boucle du programme executée sur un thread secondaire
 def main():
+	"""
+	Program loop. It will loop infinitely, on a background thread. 
+	Periodically it will fetch forum data and add it to dictionnary "topics".
+	"""
 	while(1):
 		get_data(topics)
 		delete_topics(topics)
@@ -89,10 +96,19 @@ def main():
 
 app = Flask(__name__)
 
-# Route pour accéder aux résultats, deux paramêtres entiers:
-# La valeur de "top" sert à retourner les topics les plus chauds au cours de l'intervalle "interval" 
+# Root to access results: /trends. It takes two parameters in GET http method: top and interval.
+# Return the "top" topics the most active during "interval".
 @app.route("/trends", methods = ['GET'])
 def trends():
+	"""
+		Root to access results: /trends. It takes two parameters in GET method: top and interval.
+		Return the "top" topics the most active during "interval".
+
+		Example of usage: http://your-ip-address:your-port/trends?interval=60&top=3
+		The request just above will return a JSON formatted response 
+		containing the 3 most active topics during the 60 last minutes.
+	"""
+
 	top = request.args.get('top', default = 1, type = int)
 	interval = request.args.get('interval', default = 1, type = int)
 	interval_seconds = interval * 60
@@ -127,4 +143,7 @@ def trends():
 
 @app.before_first_request
 def before():
+	"""
+	Before first request it will create a new execution thread an run main method on it.
+	"""
 	threading.Thread(target=main).start()
