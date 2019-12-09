@@ -37,7 +37,7 @@ def count_before(topic, duration):
 	now = timestamp_minute()
 	count = topic[1]["count"]
 	limit =  now - duration
-	max_val = max(i for i in count.keys() if i <= limit)
+	max_val = max(i for i in count.keys() if i <= limit, default = 0)
     
 	return count[max_val]
 
@@ -46,7 +46,7 @@ def count_after(topic, duration):
 	now = timestamp_minute()
 	count = topic[1]["count"]
 	limit =  now - duration
-	min_val = min(i for i in count.keys() if i >= limit)
+	min_val = min(i for i in count.keys() if i >= limit, default = 0)
     
 	return count[min_val]
 
