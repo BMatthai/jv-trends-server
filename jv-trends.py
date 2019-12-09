@@ -41,8 +41,8 @@ def most_recent_before(topic, duration):
 	"""
 	Returns the most recent count before a certain moment (duration)
 	"""
-	now = max(i for i in count.keys())
 	count = topic[1]["count"]
+	now = max(i for i in count.keys())
 	limit =  now - duration
 	most_recent = max((i for i in count.keys() if i <= limit))
 	
@@ -52,8 +52,8 @@ def oldest_after(topic, duration):
 	"""
 	Returns the oldest count after a certain moment (duration)
 	"""
-	now = max(i for i in count.keys())
 	count = topic[1]["count"]
+	now = max(i for i in count.keys())
 	limit =  now - duration
 	oldest = min((i for i in count.keys() if i >= limit))
 
