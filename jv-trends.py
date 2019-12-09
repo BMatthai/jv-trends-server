@@ -1,15 +1,11 @@
 from urllib.request import urlopen
 import bs4 as BeautifulSoup
-
 import re
 from datetime import datetime
 import time
-
 from flask import Flask, request
-
 import json
 from operator import itemgetter
-
 import threading
 
 STANDARD_DELAY = 5
@@ -21,21 +17,38 @@ topics = {}
 def log(string):
 	print(string)
 
-
 # Retourne la date + l'heure sous forme de string
 def timestamp_minute():
 	return int(datetime.timestamp(datetime.now()) // 60)
 
 # Cette fonction supprime les topics plus vieux que STANDARD_DELETION secondes.
-def delete_topics(topics):
+# def delete_topics(topics):
+# 	now = timestamp_minute()
+# 	remove = [topic for topic in topics.items() if (now - topic[1]["count"][-1][0]) > STANDARD_DELETION]
+
+# 	for to_remove in remove:
+# 		del topics[to_remove[0]]
+# 		log("Topic supprimé : " + to_remove[0])
+
+# 	log(str(len(topics)) + " topics trackés.")
+
+
+def count_before(topic, duration):
 	now = timestamp_minute()
-	remove = [topic for topic in topics.items() if (now - topic[1]["count"][-1][0]) > STANDARD_DELETION]
+	count = topic[1]["count"]
+	limit =  now - duration
+	max_val = max(i for i in count.keys() if i <= limit)
+    
+	return count[max_val]
 
-	for to_remove in remove:
-		del topics[to_remove[0]]
-		log("Topic supprimé : " + to_remove[0])
 
-	log(str(len(topics)) + " topics trackés.")
+def count_after(topic, duration):
+	now = timestamp_minute()
+	count = topic[1]["count"]
+	limit =  now - duration
+	min_val = min(i for i in count.keys() if i >= limit)
+    
+	return count[min_val]
 
 def delta_from_topic(topic, begin, end = 0):
 	now = timestamp_minute()
@@ -49,7 +62,7 @@ def delta_from_topic(topic, begin, end = 0):
 		log("Topic tracké depuis pas longtemps on renvoie le delta maximal")
 		return counts[-1][1] - counts[0][1]
 
-	for index, element in enumerate(counts): 
+	for index, element in enumerate(counts):
 		if (now - begin >= element[0]):
 			log("Différence compteur " + str(now - begin) + " à " + str(now) + " (" + str(counts[index][1]) + " -> " + str(counts[-1][1]) + ")")
 			return counts[-1][1] - counts[index][1]
@@ -79,20 +92,15 @@ def get_data(topics):
 		new_count = float(re.sub(r"^\s+|\s+$", "", raw_count)) + 1
 
 		if (title in topics.keys()):
-			last_element = topics[title]["count"][-1]
-			if (now == last_element[0]):
-				if (new_count > last_element[1]):
-					last_element = (now, new_count)
-			else:
-				topics[title]["count"].append((now, new_count))
+			topics[title]["count"][now] = new_count
 		else:
-			topics[title] = {"link" : link, "count" : [(now, new_count)]}
+			topics[title] = {"link" : link, "count" : {now: new_count}}
 
 # Boucle du programme executée sur un thread secondaire
 def main():
 	while(1):
 		get_data(topics)
-		delete_topics(topics)
+		# delete_topics(topics)
 		time.sleep(STANDARD_DELAY)
 
 
@@ -118,17 +126,10 @@ def trends():
 
 		limit = min(interval, last)
 		
-		i = 0
-		# Voir si la condition est OK...
-		while (topic[1]["count"][last][1] - topic[1]["count"][i][1] > interval_seconds):
-			i = i + 1
-
 		link = topic[1]["link"]
-		old_count = topic[1]["count"][i][1]
-		new_count = topic[1]["count"][last][1]
-		delta = delta_from_topic(topic, interval, 0)
-
-		# new_count - old_count
+		old_count = count_after(topic, interval)
+		new_count = count_before(topic, 0)
+		delta = new_count - old_count
 		title = topic[0]
 
 		topics_array.append({"title" : title, "link" : link, "oldval" : old_count, "newval" : new_count, "delta" : delta})
