@@ -33,7 +33,7 @@ def delete_topics(topics):
 
 	for to_remove in remove:
 		del topics[to_remove[0]]
-		log("Deleted topic : " + to_remove[0])
+		log("Deleted topic: " + to_remove[0])
 
 	log(str(len(topics)) + " tracked topics")
 
@@ -65,7 +65,15 @@ def get_data(topics):
 	{"topic_1_title": {"link" : topic_link, "count": {time_t: count_at_t, time_t1: count_at_t1}}
 	}
 	"""
-	html = urlopen('http://www.jeuxvideo.com/forums/0-51-0-1-0-1-0-blabla-18-25-ans.htm', timeout = 120).read()
+
+	try:
+		html = urlopen('http://www.jeuxvideo.com/forums/0-51-0-1-0-1-0-blabla-18-25-ans.htm', timeout = 10).read()
+	except urllib2.URLError:
+		log("Bad URL or timeout")
+		return
+	except socket.timeout:
+		log("socket timeout")
+		return
 
 	soup = BeautifulSoup.BeautifulSoup(html, features="html.parser")
 
@@ -100,8 +108,6 @@ def main():
 
 app = Flask(__name__)
 
-# Root to access results: /trends. It takes two parameters in GET http method: top and interval.
-# Return the "top" topics the most active during "interval".
 @app.route("/trends", methods = ['GET'])
 def trends():
 	"""
