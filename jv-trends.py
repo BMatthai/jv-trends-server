@@ -119,25 +119,25 @@ def trends():
 		containing the 3 most active topics during the 60 last minutes.
 	"""
 
-	top = request.args.get('top', default = 1, type = int)
-	interval = request.args.get('interval', default = 1, type = int)
-	interval_seconds = interval * 60
+	top = request.args.get('top', default = 20, type = int)
+	begin = request.args.get('begin', default = 120, type = int)
+	end = request.args.get('end', default = 0, type = int)
+
 	result_json = {}
 
 	result_json["top"] = top
-	result_json["interval"] = interval
+	result_json["begin"] = begin
+	result_json["end"] = end
 
 	# Create topic array
 	topics_array = []
 	for topic in topics.copy().items():
 		size = len(topic[1]["count"])
 		last = size - 1
-
-		limit = min(interval, last)
 		
 		link = topic[1]["link"]
-		old_count = topic[1]["count"][oldest_after(topic, interval)]
-		new_count = topic[1]["count"][most_recent_before(topic, 0)]
+		old_count = topic[1]["count"][oldest_after(topic, begin)]
+		new_count = topic[1]["count"][most_recent_before(topic, end)]
 		delta = new_count - old_count
 		title = topic[0]
 
