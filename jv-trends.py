@@ -1,54 +1,89 @@
 from urllib.request import urlopen
 import bs4 as BeautifulSoup
-
 import re
 from datetime import datetime
 import time
-
-from flask import Flask, request
-
+from flask import Flask
+from flask import request
 import json
 from operator import itemgetter
-from apscheduler.scheduler import Scheduler
+import threading
 
 STANDARD_DELAY = 5
-STANDARD_DELETION = 14400
+STANDARD_DELETION = 120
 JV_PAGE_SIZE = 26
 
 topics = {}
 
-# Retourne la date + l'heure sous forme de string
-def heure():
-	return str(datetime.now())
+def log(string):
+	print(string)
 
-# Cette fonction supprime les topics plus vieux que STANDARD_DELETION secondes.
+def timestamp_minute():
+	"""
+	This method returns the cur timestamp as minute, in a entire value.
+	"""
+	return int(datetime.timestamp(datetime.now()) // 60)
+
 def delete_topics(topics):
-	now = datetime.timestamp(datetime.now())
-	remove = [topic for topic in topics.items() if (now - topic[1]["count"][-1][0]) > STANDARD_DELETION]
+	"""
+	This method creates a list of topics to delete and then delete each one of it.
+	"""
+	now = timestamp_minute()
+	remove = [topic for topic in topics.items() if (now - most_recent_before(topic, 0)) > STANDARD_DELETION]
 
 	for to_remove in remove:
 		del topics[to_remove[0]]
-		print("Topic supprimé : " + to_remove[0])
+		log("Deleted topic: " + to_remove[0])
 
-	print(str(len(topics)) + " topics trackés.")
+	log(str(len(topics)) + " tracked topics")
 
-# Récupère la liste des 25 topics en première page du forum 18-25 de JVC et les stocke dans le dictionnaire "topics" 
-# sous la forme suivante: 
-# {"nom_topic1":[(t, count_at_t), (t+1, count_at_t+1)],
-# "nom_topic2":[(t, count_at_t), (t+1, count_at_t+1)]
-# }
-def my_counter(topics):
-	html = urlopen('http://www.jeuxvideo.com/forums/0-51-0-1-0-1-0-blabla-18-25-ans.htm', timeout = 120).read()
+def most_recent_before(topic, duration):
+	"""
+	Returns the most recent count before a certain moment (duration)
+	"""
+	count = topic[1]["count"]
+	now = max(i for i in count.keys())
+	limit =  now - duration
+	most_recent = max((i for i in count.keys() if i <= limit))
+	
+	return most_recent
+
+def oldest_after(topic, duration):
+	"""
+	Returns the oldest count after a certain moment (duration)
+	"""
+	count = topic[1]["count"]
+	now = max(i for i in count.keys())
+	limit =  now - duration
+	oldest = min((i for i in count.keys() if i >= limit))
+
+	return oldest
+
+def get_data(topics):
+	"""
+	Fetch forum main page and add it in dict "topics" in the following format:
+	{"topic_1_title": {"link" : topic_link, "count": {time_t: count_at_t, time_t1: count_at_t1}}
+	}
+	"""
+
+	try:
+		html = urlopen('http://www.jeuxvideo.com/forums/0-51-0-1-0-1-0-blabla-18-25-ans.htm', timeout = 10).read()
+	except urllib2.URLError:
+		log("Bad URL or timeout")
+		return
+	except socket.timeout:
+		log("socket timeout")
+		return
 
 	soup = BeautifulSoup.BeautifulSoup(html, features="html.parser")
 
 	page_topic_content = soup.find('ul', class_='topic-list topic-list-admin')
 
-	now = datetime.timestamp(datetime.now())
+	now = timestamp_minute()
 
-	topicsl = page_topic_content.find_all('li', class_='')
+	topic_list = page_topic_content.find_all('li', class_='')
 	
-	for topic in topicsl:
+	for topic in topic_list:
 		raw_count = topic.find('span', class_="topic-count").text
 
 		link = topic.find('a', class_="lien-jv topic-title")["href"]
@@ -56,25 +91,34 @@ def my_counter(topics):
 		new_count = float(re.sub(r"^\s+|\s+$", "", raw_count)) + 1
 
 		if (title in topics.keys()):
-			last_count = topics[title]["count"][-1][1]
-			if (new_count > last_count):
-				topics[title]["count"].append((now, new_count))
+			topics[title]["count"][now] = new_count
 		else:
-			topics[title] = {"link":link, "count":[(now, new_count)]}
+			topics[title] = {"link" : link, "count" : {now: new_count}}
 
-# Boucle du programme executée sur un thread secondaire
 def main():
+	"""
+	Program loop. It will loop infinitely, on a background thread. 
+	Periodically it will fetch forum data and add it to dictionnary "topics".
+	"""
 	while(1):
-		my_counter(topics)
+		get_data(topics)
 		delete_topics(topics)
 		time.sleep(STANDARD_DELAY)
 
+
 app = Flask(__name__)
 
-# Route pour accéder aux résultats, deux paramêtres entiers:
-# La valeur de "top" sert à retourner les topics les plus chauds au cours de l'intervalle "interval" 
 @app.route("/trends", methods = ['GET'])
 def trends():
+	"""
+		Root to access results: /trends. It takes two parameters in GET method: top and interval.
+		Return the "top" topics the most active during "interval".
+
+		Example of usage: http://your-ip-address:your-port/trends?interval=60&top=3
+		The request just above will return a JSON formatted response 
+		containing the 3 most active topics during the 60 last minutes.
+	"""
+
 	top = request.args.get('top', default = 1, type = int)
 	interval = request.args.get('interval', default = 1, type = int)
 	interval_seconds = interval * 60
@@ -85,20 +129,15 @@ def trends():
 
 	# Create topic array
 	topics_array = []
-	for topic in topics.items():
+	for topic in topics.copy().items():
 		size = len(topic[1]["count"])
 		last = size - 1
 
 		limit = min(interval, last)
 		
-		i = 0
-		# Voir si la condition est OK...
-		while (topic[1]["count"][last][1] - topic[1]["count"][i][1] > interval_seconds):
-			i = i + 1
-
 		link = topic[1]["link"]
-		old_count = topic[1]["count"][i][1]
-		new_count = topic[1]["count"][last][1]
+		old_count = topic[1]["count"][oldest_after(topic, interval)]
+		new_count = topic[1]["count"][most_recent_before(topic, 0)]
 		delta = new_count - old_count
 		title = topic[0]
 
@@ -114,6 +153,7 @@ def trends():
 
 @app.before_first_request
 def before():
-	scheduler = Scheduler()
-	scheduler.start()
-	scheduler.add_interval_job(main, seconds=5)
+	"""
+	Before first request it will create a new execution thread an run main method on it.
+	"""
+	threading.Thread(target=main).start()
