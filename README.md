@@ -19,6 +19,6 @@ For example you can access: http://your-ip-address:5000/trends?top=10&begin=30&e
 This query will returns a JSON formatted response containing the 10 most actives topics of the period between 30 minutes (begin=30) and now (end=0).
 
 ## Preview
-Here is a preview of what this script can returns using the query right above.
+Here is a preview of what this script can returns using the query right above:
 
 <img src="https://github.com/BMatthai/jv-trends-server/blob/master/resources/jv-trends-server-preview-1.png?raw=true" height="480" />
