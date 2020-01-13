@@ -151,9 +151,4 @@ def trends():
 	json_res = json.dumps(result_json)
 	return json_res, 200
 
-@app.before_first_request
-def before():
-	"""
-	Before first request it will create a new execution thread an run main method on it.
-	"""
-	threading.Thread(target=main).start()
+threading.Thread(target=main).start()
