@@ -3,11 +3,13 @@ import bs4 as BeautifulSoup
 import re
 from datetime import datetime
 import time
-from flask import Flask
-from flask import request
+
 import json
 from operator import itemgetter
 import threading
+
+from flask import Flask
+from flask import request
 
 STANDARD_DELAY = 5
 STANDARD_DELETION = 120
@@ -45,7 +47,7 @@ def most_recent_before(topic, duration):
 	now = max(i for i in count.keys())
 	limit =  now - duration
 	most_recent = max((i for i in count.keys() if i <= limit))
-	
+
 	return most_recent
 
 def oldest_after(topic, duration):
@@ -82,7 +84,7 @@ def get_data(topics):
 	now = timestamp_minute()
 
 	topic_list = page_topic_content.find_all('li', class_='')
-	
+
 	for topic in topic_list:
 		raw_count = topic.find('span', class_="topic-count").text
 
@@ -95,9 +97,9 @@ def get_data(topics):
 		else:
 			topics[title] = {"link" : link, "count" : {now: new_count}}
 
-def main():
+def monitoring_loop():
 	"""
-	Program loop. It will loop infinitely, on a background thread. 
+	Program loop. It will loop infinitely, on a background thread.
 	Periodically it will fetch forum data and add it to dictionnary "topics".
 	"""
 	while(1):
@@ -105,8 +107,12 @@ def main():
 		delete_topics(topics)
 		time.sleep(STANDARD_DELAY)
 
+class JVTrendsFlaskApp(Flask):
+	def run(self, host='0.0.0.0', port=5000, debug=None, load_dotenv=True, **options):
+		threading.Thread(target=monitoring_loop).start()
+		super(JVTrendsFlaskApp, self).run(host=host, port=port, debug=debug, load_dotenv=load_dotenv, **options)
 
-app = Flask(__name__)
+app = JVTrendsFlaskApp(__name__)
 
 @app.route("/trends", methods = ['GET'])
 def trends():
@@ -115,10 +121,9 @@ def trends():
 		Return the "top" topics the most active during "interval".
 
 		Example of usage: http://your-ip-address:your-port/trends?interval=60&top=3
-		The request just above will return a JSON formatted response 
+		The request just above will return a JSON formatted response
 		containing the 3 most active topics during the 60 last minutes.
 	"""
-
 	top = request.args.get('top', default = 20, type = int)
 	begin = request.args.get('begin', default = 120, type = int)
 	end = request.args.get('end', default = 0, type = int)
@@ -134,7 +139,7 @@ def trends():
 	for topic in topics.copy().items():
 		size = len(topic[1]["count"])
 		last = size - 1
-		
+
 		link = topic[1]["link"]
 		old_count = topic[1]["count"][oldest_after(topic, begin)]
 		new_count = topic[1]["count"][most_recent_before(topic, end)]
@@ -143,7 +148,7 @@ def trends():
 
 		topics_array.append({"title" : title, "link" : link, "oldval" : old_count, "newval" : new_count, "delta" : delta})
 
-	topics_array = sorted(topics_array, key = lambda i: (i['delta']), reverse = True) 
+	topics_array = sorted(topics_array, key = lambda i: (i['delta']), reverse = True)
 	topics_array = topics_array[:top]
 
 	result_json["topics"] = topics_array
@@ -151,9 +156,4 @@ def trends():
 	json_res = json.dumps(result_json)
 	return json_res, 200
 
-@app.before_first_request
-def before():
-	"""
-	Before first request it will create a new execution thread an run main method on it.
-	"""
-	threading.Thread(target=main).start()
+app.run()
