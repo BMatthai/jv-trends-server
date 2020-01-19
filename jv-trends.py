@@ -1,4 +1,4 @@
-from urllib.request import urlopen
+import urllib
 import bs4 as BeautifulSoup
 import re
 from datetime import datetime
@@ -69,22 +69,26 @@ def get_data(topics):
 	"""
 
 	try:
-		html = urlopen('http://www.jeuxvideo.com/forums/0-51-0-1-0-1-0-blabla-18-25-ans.htm', timeout = 10).read()
-	except urllib2.URLError:
+		html = urllib.request.urlopen('http://www.jeuxvideo.com/forums/0-51-0-1-0-1-0-blabla-18-25-ans.htm', timeout = 120).read()
+	except urllib.error.URLError:
 		log("Bad URL or timeout")
 		return
-	except socket.timeout:
-		log("socket timeout")
+	except socket.error as socketerror:
 		return
 
 	soup = BeautifulSoup.BeautifulSoup(html, features="html.parser")
 
 	page_topic_content = soup.find('ul', class_='topic-list topic-list-admin')
 
-	now = timestamp_minute()
+	if page_topic_content is None:
+		return
 
 	topic_list = page_topic_content.find_all('li', class_='')
 
+	if topic_list is None:
+		return
+
+	now = timestamp_minute()
 	for topic in topic_list:
 		raw_count = topic.find('span', class_="topic-count").text
 
@@ -107,12 +111,15 @@ def monitoring_loop():
 		delete_topics(topics)
 		time.sleep(STANDARD_DELAY)
 
-class JVTrendsFlaskApp(Flask):
-	def run(self, host='0.0.0.0', port=5000, debug=None, load_dotenv=True, **options):
-		threading.Thread(target=monitoring_loop).start()
-		super(JVTrendsFlaskApp, self).run(host=host, port=port, debug=debug, load_dotenv=load_dotenv, **options)
+class MyFlaskApp(Flask):
+	def run(self, host=None, port=None, debug=None, load_dotenv=True, **options):
+		print("started")
+		if not self.debug:
+			with self.app_context():
+				threading.Thread(target=monitoring_loop).start()
+				super(MyFlaskApp, self).run(host=host, port=port, debug=debug, load_dotenv=load_dotenv, **options)
 
-app = JVTrendsFlaskApp(__name__)
+app = MyFlaskApp(__name__)
 
 @app.route("/trends", methods = ['GET'])
 def trends():
@@ -156,4 +163,4 @@ def trends():
 	json_res = json.dumps(result_json)
 	return json_res, 200
 
-app.run()
+app.run(host="0.0.0.0", port=5000)
