@@ -73,8 +73,6 @@ def get_data(topics):
 	except urllib.error.URLError:
 		log("Bad URL or timeout")
 		return
-	except socket.error as socketerror:
-		return
 
 	soup = BeautifulSoup.BeautifulSoup(html, features="html.parser")
 
@@ -92,9 +90,20 @@ def get_data(topics):
 	for topic in topic_list:
 		raw_count = topic.find('span', class_="topic-count").text
 
+		if raw_count is None:
+			raw_count = "0"
+
 		link = topic.find('a', class_="lien-jv topic-title")["href"]
+		if link is None:
+			link = "http://www.google.fr"
+
 		title = topic.find('a', class_="lien-jv topic-title")["title"]
+		if title is None:
+			title = "DEFAULT TITLE"
+
 		new_count = float(re.sub(r"^\s+|\s+$", "", raw_count)) + 1
+		if new_count is None:
+			new_count = 0
 
 		if (title in topics.keys()):
 			topics[title]["count"][now] = new_count
