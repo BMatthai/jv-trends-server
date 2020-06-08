@@ -16,7 +16,7 @@ Ensure each dependencies listed in requirements.txt file is properly installed.
 Program is runned once the first http request has been sent.
 For example you can access: http://your-ip-address:5000/trends?top=10&begin=30&end=0.
 
-This query will returns a JSON formatted response containing the 10 most actives topics of the period between 30 minutes (begin=30) and now (end=0).
+This query will returns a JSON formatted response containing the 10 most actives topics of the period between 30 minutes ago (begin=30) and now (end=0).
 
 ## Preview
 Here is a preview of what this script can returns using the query right above:
